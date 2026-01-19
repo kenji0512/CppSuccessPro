@@ -1,0 +1,18 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+Debug/
+Release/
+x64/
+
+# ビルド生成物
+*.exe
+*.obj
+*.ilk
+*.pdb
+
+# DXライブラリ
+DxLib/
