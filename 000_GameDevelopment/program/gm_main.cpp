@@ -39,6 +39,8 @@ float encounterCooldown = 0.0f; // 戦闘後の無敵時間
 int playerHP = 10;
 int enemyHP = 10;
 const int attackDamage = 3;
+bool wasInGrass = false;
+bool IsMoving = false;
 
 
 //------------------------------------------------------
@@ -58,16 +60,31 @@ void gameMain(float delta_time) {
         //--------------------------------------------------
         // フィールド状態
     case GameState::FIELD:
+    {
+        // もし画面が暗ければ、徐々に明るくする処理
+        if (fadeAlpha > 0.0f) {
+            fadeAlpha -= fadeSpeed * delta_time;
+            if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
+        }
+        // クールタイムの減少
         if (encounterCooldown > 0.0f) {
             encounterCooldown -= delta_time;
-            if (encounterCooldown < 0.0f)
-                encounterCooldown = 0.0f;
+            if (encounterCooldown < 0.0f) encounterCooldown = 0.0f;
         }
-
+        // プレイヤーの移動入力を取得（移動しているかチェック）
+        // PlayerControllerに速度や入力状態を取れる関数があると良いです
+        bool isMoving = player->IsMoving();
         player->Update(delta_time);
+        bool isInGrass = player->IsInGrassArea();
 
-        // 背景（必要なら描画）
-        //ClearDrawScreen(); // 背景色クリア（DxLib の仕様で不要なら省略）
+        // クールタイム中、または草むら外ならタイマーリセット
+        if (encounterCooldown > 0.0f || !isInGrass) {
+            encounterTimer = 0.0f; // 安全な時はタイマーを0に
+        }
+        else if (isMoving) {
+            // 草むらの中で、かつ動いている時だけタイマーが進む
+            encounterTimer += delta_time;
+        }
 
         // 草むら描画（フィールド要素）
         DrawBox(0, DXE_WINDOW_HEIGHT - 100, DXE_WINDOW_WIDTH, DXE_WINDOW_HEIGHT,
@@ -78,23 +95,27 @@ void gameMain(float delta_time) {
         // プレイヤーを一番前に
         player->Draw();
 
-        // 草むらエリアにいる場合の疑似エンカウント
-        encounterTimer += delta_time;
-        if (encounterCooldown <= 0.0f &&
-            player->IsInGrassArea() &&
-            encounterTimer > 1.0f) {
-
-            if (rand() % 100 < 5) {
+        // エンカウント判定
+        if (encounterCooldown <= 0.0f && isInGrass && encounterTimer > 1.0f && isMoving) {
+            if (rand() % 100 < 2) { // 2% くらいの低確率がちょうど良いです
                 gameState = GameState::FADE_OUT;
                 fadeAlpha = 0.0f;
-                encounterTimer = 0.0f;
+                encounterTimer = 0.0f; // 念のためリセット
                 nextStateAfterFade = GameState::FADE_IN;
-
             }
         }
-        if (!player->IsInGrassArea()) {
-            encounterTimer = 0.0f;
-        }
+        // エンカウント判定（ここでも cooldown をしっかりチェック）
+        //if (encounterCooldown <= 0.0f && isInGrass && encounterTimer > 1.0f) {
+        //    if (rand() % 100 < 5) {
+        //        gameState = GameState::FADE_OUT;
+        //        fadeAlpha = 0.0f;
+        //        encounterTimer = 0.0f;
+        //        nextStateAfterFade = GameState::FADE_IN;
+        //    }
+        //}
+        // 状態保存
+        wasInGrass = isInGrass;
+    }
         break;
         //--------------------------------------------------
     case GameState::FADE_OUT:
@@ -110,6 +131,11 @@ void gameMain(float delta_time) {
         if (fadeAlpha >= 255.0f) {
             fadeAlpha = 255.0f;
             gameState = nextStateAfterFade;
+            if (nextStateAfterFade == GameState::FIELD) {
+                wasInGrass = false;
+                encounterTimer = 0.0f;   // タイマーを確実にリセット
+                encounterCooldown = 5.0f; // 5秒間は絶対に敵が出ない
+            }
         }
         break;
 
@@ -173,9 +199,9 @@ void gameMain(float delta_time) {
                 // にげる
                 gameState = GameState::FADE_OUT;
                 nextStateAfterFade = GameState::FIELD;
-                fadeAlpha = 0.0f;
+                fadeAlpha = 255.0f;
                 encounterTimer = 0.0f;
-                encounterCooldown = 2.0f;
+                encounterCooldown = 3.0f;
             }
             WaitTimer(150);
         }
@@ -206,10 +232,9 @@ void gameMain(float delta_time) {
         if (resultTimer > 2.5f) {
             resultTimer = 0.0f;
             battleResult = BattleResult::NONE;
-            gameState = GameState::FADE_OUT;
-            nextStateAfterFade = GameState::FIELD;
-            fadeAlpha = 0.0f;
-            encounterCooldown = 2.0f; // 2秒間エンカウント無効
+            gameState = GameState::FIELD;
+            fadeAlpha = 255.0f;
+            encounterCooldown = 5.0f; // 5秒間エンカウント無効
             encounterTimer = 0.0f;    
         }
         break;
