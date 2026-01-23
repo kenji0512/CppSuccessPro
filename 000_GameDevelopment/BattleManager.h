@@ -3,6 +3,11 @@
 
 enum class BattleCommand { FIGHT, RUN };
 enum class BattleResult { WIN, LOSE, NONE };
+enum class BattleStep {
+    COMMAND_SELECT, // コマンド選択中
+    MESSAGE_DISPLAY, // メッセージ表示中
+    CHECK_ALIVE      // 生死判定
+};
 
 class BattleManager {
 public:
@@ -14,9 +19,14 @@ public:
 private:
     int playerHP;
     int enemyHP;
+    const char* playerName = "ピカチュウ";
+    const char* enemyName = "コラッタ";
     const int attackDamage = 3;
     bool isFinished;
     BattleCommand selectedCommand;
     BattleResult result;
     float resultTimer;
+    BattleStep step = BattleStep::COMMAND_SELECT;
+    std::string battleMessage = "";
+    float messageTimer = 0.0f;
 };
