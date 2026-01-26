@@ -1,4 +1,5 @@
 #include "BattleManager.h"
+#include "ScenarioManager.h"
 
 void BattleManager::Start() {
     playerHP = 10;
@@ -10,6 +11,10 @@ void BattleManager::Start() {
 }
 
 void BattleManager::Update(float delta_time) {
+    if (scenario != nullptr && scenario->IsActive()) {
+        scenario->Update(delta_time); // delta -> delta_time に修正
+        return;
+    }
     if (result != BattleResult::NONE) {
         resultTimer += delta_time;
         if (resultTimer > 2.5f) isFinished = true;
@@ -25,11 +30,14 @@ void BattleManager::Update(float delta_time) {
 
         if (CheckHitKey(KEY_INPUT_RETURN)) {
             if (selectedCommand == BattleCommand::FIGHT) {
-                // 攻撃開始！メッセージをセットしてステップ移行
-                battleMessage = "ピカチュウの こうげき！";
-                enemyHP -= attackDamage; // ダメージはここで引いておく
-                if (enemyHP < 0) enemyHP = 0;
+                // ここでCSVを読み込む（パスは環境に合わせて調整してください）
+                scenario->LoadCSV("AttackMessage.csv");
 
+                int damage = scenario->GetCurrentPower();
+                // バトルの内部状態も更新
+                battleMessage = "ピカチュウの こうげき！";
+                enemyHP -= attackDamage;
+                if (enemyHP < 0) enemyHP = 0;
                 step = BattleStep::MESSAGE_DISPLAY;
                 messageTimer = 0.0f;
             }
@@ -44,28 +52,32 @@ void BattleManager::Update(float delta_time) {
         // --- メッセージ表示中 ---
         messageTimer += delta_time;
         if (messageTimer > 1.5f) { // 1.5秒ごとに次のアクションへ
-
-            // 1. 敵のHPが0になった場合（Playerの勝ち）
-            if (enemyHP <= 0) {
-                battleMessage = "コラッタは たおれた！";
-                result = BattleResult::WIN;
-                // result が NONE 以外になると、Updateの冒頭でリザルトタイマーが動き出します
+            if (scenario != nullptr) {
+                scenario->Update(delta_time);
             }
-            // 2. まだ敵が生きていて、かつ敵が攻撃していない場合（敵のターン）
-            else if (battleMessage.find("コラッタ") == std::string::npos) {
-                battleMessage = "コラッタの こうげき！";
-                playerHP -= attackDamage;
-                if (playerHP < 0) playerHP = 0;
-                messageTimer = 0.0f;
-            }
-            // 3. どちらも倒れず、ターンが終了した場合
-            else {
-                if (playerHP <= 0) {
-                    battleMessage = "ピカチュウは たおれてしまった...";
-                    result = BattleResult::LOSE;
+            if (!scenario->IsActive()) {
+                // 1. 敵のHPが0になった場合（Playerの勝ち）
+                if (enemyHP <= 0) {
+                    battleMessage = "コラッタは たおれた！";
+                    result = BattleResult::WIN;
+                    // result が NONE 以外になると、Updateの冒頭でリザルトタイマーが動き出します
                 }
+                // 2. まだ敵が生きていて、かつ敵が攻撃していない場合（敵のターン）
+                else if (battleMessage.find("コラッタ") == std::string::npos) {
+                    battleMessage = "コラッタの こうげき！";
+                    playerHP -= attackDamage;
+                    if (playerHP < 0) playerHP = 0;
+                    messageTimer = 0.0f;
+                }
+                // 3. どちらも倒れず、ターンが終了した場合
                 else {
-                    step = BattleStep::COMMAND_SELECT; // コマンド選択に戻る
+                    if (playerHP <= 0) {
+                        battleMessage = "ピカチュウは たおれてしまった...";
+                        result = BattleResult::LOSE;
+                    }
+                    else {
+                        step = BattleStep::COMMAND_SELECT; // コマンド選択に戻る
+                    }
                 }
             }
         }
@@ -112,8 +124,10 @@ void BattleManager::Draw() {
 
     // --- メッセージ/コマンド枠（画面最下部） ---
     DrawBox(10, 350, DXE_WINDOW_WIDTH - 10, DXE_WINDOW_HEIGHT - 10, GetColor(255, 255, 255), FALSE);
-
-    if (step == BattleStep::COMMAND_SELECT) {
+    if (scenario != nullptr && scenario->IsActive()) {
+        scenario->Draw(); // シナリオがアクティブならシナリオマネージャーに任せる
+    }
+    else if (step == BattleStep::COMMAND_SELECT) {
         // コマンド選択中は「たたかう」「にげる」を表示
         SetFontSize(40);
         unsigned int f_color = (selectedCommand == BattleCommand::FIGHT) ? GetColor(255, 255, 0) : GetColor(255, 255, 255);
@@ -147,3 +161,4 @@ void BattleManager::Draw() {
     // 次の描画のためにフォントサイズをデフォルトに戻しておく
     SetFontSize(16);
 }
+

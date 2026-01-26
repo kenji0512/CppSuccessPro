@@ -4,6 +4,7 @@
 #include "FieldManager.h"
 #include "BattleManager.h"
 #include "FadeManager.h"
+#include "ScenarioManager.h"
 
 enum class GameState {
     FIELD,
@@ -26,4 +27,5 @@ private:
     std::unique_ptr<FieldManager> field;
     std::unique_ptr<BattleManager> battle;
     std::unique_ptr<FadeManager> fade;
+    std::unique_ptr<ScenarioManager> scenarioMgr;
 };
