@@ -8,6 +8,8 @@ void GameController::Init()
     field = std::make_unique<FieldManager>();
     battle = std::make_unique<BattleManager>();
     fade = std::make_unique<FadeManager>();
+    scenarioMgr = std::make_unique<ScenarioManager>();
+    battle->SetScenarioManager(scenarioMgr.get()); 
 }
 
 void GameController::Update(float delta)
