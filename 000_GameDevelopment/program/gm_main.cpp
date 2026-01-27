@@ -2,22 +2,17 @@
 #include "../GameController.h"
 
 GameController game;
-BattleManager battle;
-ScenarioManager scenarioMgr;
 
 void gameStart()
 {
-    game.Init();
-    battle.SetScenarioManager(&scenarioMgr);
-    battle.Start();
+    game.Init(); // ‚±‚Ì’†‚Å battle ‚à scenarioMgr ‚à‰Šú‰»‚³‚ê‚Ü‚·
 }
 
 void gameMain(float deltaTime)
 {
+    // game.Update ‚Ì’†‚ÅAó‘Ô‚É‡‚í‚¹‚Ä field ‚© battle ‚©‚ğ©“®‚Å‘I‚ñ‚Å‚­‚ê‚Ü‚·
     game.Update(deltaTime);
     game.Draw();
-    battle.Update(deltaTime);
-    battle.Draw();
 }
 
 void gameEnd()

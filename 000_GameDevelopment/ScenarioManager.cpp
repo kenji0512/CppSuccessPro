@@ -34,13 +34,13 @@ void ScenarioManager::LoadCSV(const std::string& filename) {
             data.type = (row[0] == "TALK") ? CommandType::TALK : CommandType::EVENT;
             data.caption = row[1];
             data.body = row[2];
-            data.nextEvent = (row.size() > 3) ? row[3] : "";
             if (row.size() >= 4) {
                 data.power = std::stoi(row[3]);
             }
             else {
                 data.power = 0;
-            }            lines.push_back(data);
+            }            
+            lines.push_back(data);
         }
     }
     file.close();
@@ -62,7 +62,7 @@ void ScenarioManager::Update(float delta) {
         typeTimer += delta;
         if (typeTimer > 0.05f) {
             typeTimer = 0.0f;
-            charIndex++;
+            charIndex+=2;
             if (charIndex >= current.body.size()) {
                 state = MessageState::WAIT_INPUT;
             }
@@ -83,22 +83,36 @@ void ScenarioManager::Update(float delta) {
         }
     }
 }
+const ScenarioLine& ScenarioManager::GetCurrentLine() const {
+    // linesが空っぽの時のための「安全な空データ」
+    // staticを付けるなら「関数の中」で変数に付けるのはOKです（一度だけ生成される）
+    static ScenarioLine emptyLine = { CommandType::TALK, "None", "None", 0 };
+
+    if (lines.empty()) {
+        return emptyLine;
+    }
+
+    // 範囲外アクセスをガード
+    int index = currentIndex;
+    if (index >= (int)lines.size()) {
+        index = (int)lines.size() - 1;
+    }
+    return lines[index];
+}
 void ScenarioManager::Draw() {
     if (state == MessageState::IDLE) return;
 
     auto& current = lines[currentIndex];
+    // ウィンドウ
+    DrawBox(30, 350, 610, 450, GetColor(0, 0, 0), TRUE);
+    DrawBox(30, 350, 610, 450, GetColor(255, 255, 255), FALSE);
+    // キャプション
+    DrawString(40, 330, current.caption.c_str(), GetColor(255, 255, 255));
 
     int safeCharIndex = (charIndex > (int)current.body.size()) ? (int)current.body.size() : charIndex;
 
     std::string display = current.body.substr(0, safeCharIndex);
     DrawString(50, 370, display.c_str(), GetColor(255, 255, 255));
-
-    // ウィンドウ
-    DrawBox(30, 350, 610, 450, GetColor(0, 0, 0), TRUE);
-    DrawBox(30, 350, 610, 450, GetColor(255, 255, 255), FALSE);
-
-    // キャプション
-    DrawString(40, 330, current.caption.c_str(), GetColor(255, 255, 255));
 
     // 本文（1文字送り対応）
     DrawString(50, 370, display.c_str(), GetColor(255, 255, 255));

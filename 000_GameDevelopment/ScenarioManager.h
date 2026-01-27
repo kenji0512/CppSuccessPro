@@ -14,7 +14,6 @@ struct ScenarioLine {
     CommandType type;
     std::string caption;
     std::string body;
-    std::string nextEvent;
     int power = 0;
 };
 class ScenarioManager
@@ -23,17 +22,17 @@ public:
     void LoadCSV(const std::string& filename); // ファイルから読み込み
     void Update(float delta);               // 非同期更新
     void Draw();                            // ウィンドウと文字の描画
-    //void Next();                            // 次のページへ（入力があったら呼ぶ）
 
     // 外部（BattleManagerなど）からメッセージを開始するための関数
-    // void StartScenario(const std::vector<ScenarioLine>& newLines);
     bool IsActive() const { return state != MessageState::IDLE; }
+    const ScenarioLine& GetCurrentLine() const;
     int GetCurrentPower() const {
         if (currentIndex < lines.size()) {
             return lines[currentIndex].power;
         }
         return 0;
     }
+    int GetCurrentIndex() const { return currentIndex; }
 
 private:
     std::vector<ScenarioLine> lines;     // シナリオデータのリスト
