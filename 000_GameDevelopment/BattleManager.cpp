@@ -8,11 +8,21 @@ void BattleManager::Start() {
     selectedCommand = BattleCommand::FIGHT;
     result = BattleResult::NONE;
     resultTimer = 0.0f;
+    lastProcessedIndex = -1;
 }
 
 void BattleManager::Update(float delta_time) {
     if (scenario != nullptr && scenario->IsActive()) {
         scenario->Update(delta_time); // delta -> delta_time に修正
+        if (scenario->IsActive()) {
+            //シナリオの行が進んだかチェック
+            int currentIndex = scenario->GetCurrentIndex();
+            if (currentIndex != lastProcessedIndex) {
+                // 行が変わったので、その行のダメージを適用する
+                ApplyDamage(scenario->GetCurrentLine());
+                lastProcessedIndex = currentIndex; // 処理済みとして記録
+            }
+        }
         return;
     }
     if (result != BattleResult::NONE) {
@@ -32,12 +42,7 @@ void BattleManager::Update(float delta_time) {
             if (selectedCommand == BattleCommand::FIGHT) {
                 // ここでCSVを読み込む（パスは環境に合わせて調整してください）
                 scenario->LoadCSV("AttackMessage.csv");
-
-                int damage = scenario->GetCurrentPower();
-                // バトルの内部状態も更新
-                battleMessage = "ピカチュウの こうげき！";
-                enemyHP -= attackDamage;
-                if (enemyHP < 0) enemyHP = 0;
+                lastProcessedIndex = -1;
                 step = BattleStep::MESSAGE_DISPLAY;
                 messageTimer = 0.0f;
             }
@@ -51,35 +56,19 @@ void BattleManager::Update(float delta_time) {
     case BattleStep::MESSAGE_DISPLAY:
         // --- メッセージ表示中 ---
         messageTimer += delta_time;
-        if (messageTimer > 1.5f) { // 1.5秒ごとに次のアクションへ
-            if (scenario != nullptr) {
-                scenario->Update(delta_time);
-            }
+        if (scenario->IsActive()) {
+            battleMessage = scenario->GetCurrentLine().body;
+        }
+        if (messageTimer > 1.5f || CheckHitKey(KEY_INPUT_RETURN)){
             if (!scenario->IsActive()) {
-                // 1. 敵のHPが0になった場合（Playerの勝ち）
-                if (enemyHP <= 0) {
-                    battleMessage = "コラッタは たおれた！";
-                    result = BattleResult::WIN;
-                    // result が NONE 以外になると、Updateの冒頭でリザルトタイマーが動き出します
-                }
-                // 2. まだ敵が生きていて、かつ敵が攻撃していない場合（敵のターン）
-                else if (battleMessage.find("コラッタ") == std::string::npos) {
-                    battleMessage = "コラッタの こうげき！";
-                    playerHP -= attackDamage;
-                    if (playerHP < 0) playerHP = 0;
-                    messageTimer = 0.0f;
-                }
-                // 3. どちらも倒れず、ターンが終了した場合
-                else {
-                    if (playerHP <= 0) {
-                        battleMessage = "ピカチュウは たおれてしまった...";
-                        result = BattleResult::LOSE;
-                    }
-                    else {
-                        step = BattleStep::COMMAND_SELECT; // コマンド選択に戻る
-                    }
+                // 全てのメッセージ（敵の反撃含む）が終わったら判定へ
+                if (!scenario->IsActive()) {
+                    if (enemyHP <= 0) result = BattleResult::WIN;
+                    else if (playerHP <= 0) result = BattleResult::LOSE;
+                    else step = BattleStep::COMMAND_SELECT;
                 }
             }
+            messageTimer = 0.0f; // タイマーリセット
         }
         break;
     }
@@ -89,7 +78,17 @@ void BattleManager::Update(float delta_time) {
         WaitTimer(150);
     }
 }
-
+void BattleManager::ApplyDamage(const ScenarioLine& line) {
+    if (line.caption == "ピカチュウ") {
+        enemyHP -= line.power;
+    }
+    else {
+        // ピカチュウ以外（コラッタ等）がcaptionならプレイヤーが食らう
+        playerHP -= line.power;
+    }
+    if (enemyHP < 0) enemyHP = 0;
+    if (playerHP < 0) playerHP = 0;
+}
 void BattleManager::Draw() {
     // 1. 背景（少しグラデーションっぽく暗くしてもいいですね）
     DrawBox(0, 0, DXE_WINDOW_WIDTH, DXE_WINDOW_HEIGHT, GetColor(20, 20, 40), TRUE);

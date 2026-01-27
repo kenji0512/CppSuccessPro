@@ -20,12 +20,13 @@ public:
     void SetScenarioManager(ScenarioManager* sm) { scenario = sm; }
 
 private:
+    void ApplyDamage(const ScenarioLine& line);
     ScenarioManager* scenario = nullptr;
     int playerHP =  0;
     int enemyHP = 0;
+    int lastProcessedIndex = -1;
     const char* playerName = "ピカチュウ";
     const char* enemyName = "コラッタ";
-    const int attackDamage = 3;
     bool isFinished = false;
     BattleCommand selectedCommand;
     BattleResult result;
